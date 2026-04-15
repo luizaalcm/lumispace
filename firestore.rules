@@ -1,0 +1,63 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function requesterData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function requesterIsProfessional() {
+      return isSignedIn() && requesterData().tipo == 'profissional';
+    }
+
+    function requesterIsLinkedProfessional(userId) {
+      return requesterIsProfessional() &&
+        request.auth.uid in resource.data.profissionaisVinculados;
+    }
+
+    match /users/{userId} {
+      allow create: if isOwner(userId)
+        && request.resource.data.uid == request.auth.uid;
+
+      allow read: if isOwner(userId)
+        || (requesterIsProfessional() && resource.data.tipo == 'paciente');
+
+      allow update: if isOwner(userId)
+        || (
+          requesterIsProfessional()
+          && resource.data.tipo == 'paciente'
+          && request.resource.data.diff(resource.data).changedKeys().hasOnly([
+            'profissionaisVinculados'
+          ])
+        );
+
+      allow delete: if isOwner(userId);
+
+      match /registros/{registroId} {
+        allow read: if isOwner(userId)
+          || (
+            requesterIsProfessional()
+            && request.auth.uid in get(/databases/$(database)/documents/users/$(userId)).data.profissionaisVinculados
+          );
+        allow create, update, delete: if isOwner(userId);
+      }
+
+      match /medicacoes/{medicacaoId} {
+        allow read: if isOwner(userId)
+          || (
+            requesterIsProfessional()
+            && request.auth.uid in get(/databases/$(database)/documents/users/$(userId)).data.profissionaisVinculados
+          );
+        allow create, update, delete: if isOwner(userId);
+      }
+    }
+  }
+}
