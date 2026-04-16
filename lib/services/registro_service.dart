@@ -31,6 +31,15 @@ class RegistroService {
         .add(registro.toMap());
   }
 
+  Future<int> contarRegistros(String userId) async {
+    final snapshot = await _db
+        .collection('users')
+        .doc(userId)
+        .collection('registros')
+        .get();
+    return snapshot.docs.length;
+  }
+
   Stream<List<MedicacaoModel>> observarMedicacoes(String userId) {
     return _db
         .collection('users')
@@ -45,11 +54,33 @@ class RegistroService {
         );
   }
 
-  Future<void> salvarMedicacao(MedicacaoModel medicacao) async {
-    await _db
+  Future<MedicacaoModel> salvarMedicacao(MedicacaoModel medicacao) async {
+    final ref = await _db
         .collection('users')
         .doc(medicacao.userId)
         .collection('medicacoes')
         .add(medicacao.toMap());
+    return medicacao.copyWith(id: ref.id);
+  }
+
+  Future<void> atualizarMedicacao(MedicacaoModel medicacao) async {
+    await _db
+        .collection('users')
+        .doc(medicacao.userId)
+        .collection('medicacoes')
+        .doc(medicacao.id)
+        .update(medicacao.toMap());
+  }
+
+  Future<void> excluirMedicacao({
+    required String userId,
+    required String medicacaoId,
+  }) async {
+    await _db
+        .collection('users')
+        .doc(userId)
+        .collection('medicacoes')
+        .doc(medicacaoId)
+        .delete();
   }
 }

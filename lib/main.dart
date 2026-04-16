@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
-import 'package:lumispace/screens/auth/auth_screen.dart';
+import 'package:lumispace/screens/welcome/welcome_screen.dart';
+import 'package:lumispace/services/notificacao_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  await NotificacaoService.instance.init();
   runApp(const MyApp());
 }
 
@@ -25,7 +27,7 @@ class MyApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: const AuthScreen(),
+      home: const WelcomeScreen(),
     );
   }
 }

@@ -21,7 +21,7 @@ class _AuthScreenState extends State<AuthScreen> {
   final _registroController = TextEditingController();
   final _especialidadeController = TextEditingController();
 
-  bool _modoCadastro = true;
+  bool _modoCadastro = false;
   bool _carregando = false;
   TipoUsuario _tipoSelecionado = TipoUsuario.paciente;
   ConselhoProfissional _conselhoSelecionado = ConselhoProfissional.crp;
@@ -203,181 +203,259 @@ class _AuthScreenState extends State<AuthScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F5F8),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 480),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'LumiSpace - Diario TPB',
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      color: const Color(0xFF8A8A8A),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    _modoCadastro ? 'Registre-se!' : 'Fazer login',
-                    style: theme.textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: const Color(0xFF5A5557),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  _ModoToggle(
-                    isCadastro: _modoCadastro,
-                    onChanged: (value) {
-                      setState(() => _modoCadastro = value);
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  _PerfilToggle(
-                    tipoSelecionado: _tipoSelecionado,
-                    onChanged: _alternarTipo,
-                  ),
-                  const SizedBox(height: 20),
-                  if (_modoCadastro) ...[
-                    _CampoArredondado(
-                      controller: _nomeController,
-                      label: 'Nome',
-                      validator: _validarNome,
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                  _CampoArredondado(
-                    controller: _emailController,
-                    label: 'Email',
-                    keyboardType: TextInputType.emailAddress,
-                    validator: _validarEmail,
-                  ),
-                  const SizedBox(height: 12),
-                  if (_modoCadastro) ...[
-                    _DateField(
-                      label: 'Data de nascimento',
-                      value: _dataNascimento == null
-                          ? null
-                          : _formatarData(_dataNascimento!),
-                      onTap: _selecionarDataNascimento,
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                  if (_modoCadastro && _isProfissional) ...[
-                    Text(
-                      'Registro profissional',
-                      style: theme.textTheme.labelLarge?.copyWith(
-                        color: const Color(0xFF5A5557),
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _ConselhoChip(
-                            label: 'CRP',
-                            selected:
-                                _conselhoSelecionado == ConselhoProfissional.crp,
-                            onTap: () => setState(
-                              () => _conselhoSelecionado =
-                                  ConselhoProfissional.crp,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _ConselhoChip(
-                            label: 'CRM',
-                            selected:
-                                _conselhoSelecionado == ConselhoProfissional.crm,
-                            onTap: () => setState(
-                              () => _conselhoSelecionado =
-                                  ConselhoProfissional.crm,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    _CampoArredondado(
-                      controller: _registroController,
-                      label: _conselhoSelecionado == ConselhoProfissional.crp
-                          ? 'Numero do CRP'
-                          : 'Numero do CRM',
-                      validator: _validarRegistro,
-                    ),
-                    const SizedBox(height: 12),
-                    _CampoArredondado(
-                      controller: _especialidadeController,
-                      label: 'Especialidade',
-                      validator: _validarEspecialidade,
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                  _CampoArredondado(
-                    controller: _senhaController,
-                    label: 'Senha',
-                    obscureText: true,
-                    validator: _validarSenha,
-                  ),
-                  if (!_modoCadastro) ...[
-                    const SizedBox(height: 10),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton(
-                        onPressed: _carregando ? null : _redefinirSenha,
-                        style: TextButton.styleFrom(
-                          foregroundColor: const Color(0xFF8A7FF0),
-                          padding: EdgeInsets.zero,
-                        ),
-                        child: const Text('Modificar senha'),
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 28),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _carregando ? null : _submeter,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFD3C7F7),
-                        foregroundColor: const Color(0xFF4F4772),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        elevation: 0,
-                      ),
-                      child: _carregando
-                          ? const SizedBox(
-                              width: 22,
-                              height: 22,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.5,
-                              ),
-                            )
-                          : Text(
-                              _modoCadastro ? 'Vamos comecar!' : 'Entrar',
-                            ),
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  Text(
-                    'Pacientes podem ter varios profissionais vinculados, e cada profissional pode acompanhar varios pacientes.',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: const Color(0xFF7C7679),
-                      height: 1.45,
-                    ),
-                  ),
-                ],
-              ),
+      backgroundColor: const Color(0xFFF8F2FF),
+      body: Stack(
+        children: [
+          Positioned(
+            top: -90,
+            right: -30,
+            child: _AuthBubble(
+              size: 220,
+              color: const Color(0x66E9D7FF),
             ),
           ),
-        ),
+          Positioned(
+            top: 180,
+            left: -60,
+            child: _AuthBubble(
+              size: 180,
+              color: const Color(0x4DF9D9EB),
+            ),
+          ),
+          Positioned(
+            bottom: -70,
+            right: -20,
+            child: _AuthBubble(
+              size: 190,
+              color: const Color(0x40D9CCFF),
+            ),
+          ),
+          SafeArea(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minHeight: constraints.maxHeight - 56,
+                    ),
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 480),
+                        child: Form(
+                          key: _formKey,
+                          child: Container(
+                      padding: const EdgeInsets.fromLTRB(22, 22, 22, 24),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.78),
+                        borderRadius: BorderRadius.circular(32),
+                        border: Border.all(
+                          color: const Color(0xFFE9DDF8),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFFB59BEA).withValues(alpha: 0.14),
+                            blurRadius: 28,
+                            offset: const Offset(0, 14),
+                          ),
+                        ],
+                      ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                          Text(
+                            'LumiSpace - Diário TPB',
+                            style: theme.textTheme.labelMedium?.copyWith(
+                              color: const Color(0xFF8F86A0),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Align(
+                            alignment: Alignment.center,
+                            child: Text(
+                              _modoCadastro ? 'Criar conta' : 'Fazer login',
+                              textAlign: TextAlign.center,
+                              style: theme.textTheme.headlineMedium?.copyWith(
+                                fontWeight: FontWeight.w800,
+                                color: const Color(0xFF564F63),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Align(
+                            alignment: Alignment.center,
+                            child: Text(
+                              _modoCadastro
+                                  ? 'Monte seu espacinho com calma para comecar.'
+                                  : 'Que bom te ver por aqui de novo.',
+                              textAlign: TextAlign.center,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: const Color(0xFF857C92),
+                                height: 1.45,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          _ModoToggle(
+                            isCadastro: _modoCadastro,
+                            onChanged: (value) {
+                              setState(() => _modoCadastro = value);
+                            },
+                          ),
+                          const SizedBox(height: 16),
+                          _PerfilToggle(
+                            tipoSelecionado: _tipoSelecionado,
+                            onChanged: _alternarTipo,
+                          ),
+                          const SizedBox(height: 20),
+                          if (_modoCadastro) ...[
+                            _CampoArredondado(
+                              controller: _nomeController,
+                              label: 'Nome',
+                              validator: _validarNome,
+                            ),
+                            const SizedBox(height: 12),
+                          ],
+                          _CampoArredondado(
+                            controller: _emailController,
+                            label: 'Email',
+                            keyboardType: TextInputType.emailAddress,
+                            validator: _validarEmail,
+                          ),
+                          const SizedBox(height: 12),
+                          if (_modoCadastro) ...[
+                            _DateField(
+                              label: 'Data de nascimento',
+                              value: _dataNascimento == null
+                                  ? null
+                                  : _formatarData(_dataNascimento!),
+                              onTap: _selecionarDataNascimento,
+                            ),
+                            const SizedBox(height: 12),
+                          ],
+                          if (_modoCadastro && _isProfissional) ...[
+                            Text(
+                              'Registro profissional',
+                              style: theme.textTheme.labelLarge?.copyWith(
+                                color: const Color(0xFF5A5557),
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: _ConselhoChip(
+                                    label: 'CRP',
+                                    selected: _conselhoSelecionado ==
+                                        ConselhoProfissional.crp,
+                                    onTap: () => setState(
+                                      () => _conselhoSelecionado =
+                                          ConselhoProfissional.crp,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: _ConselhoChip(
+                                    label: 'CRM',
+                                    selected: _conselhoSelecionado ==
+                                        ConselhoProfissional.crm,
+                                    onTap: () => setState(
+                                      () => _conselhoSelecionado =
+                                          ConselhoProfissional.crm,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            _CampoArredondado(
+                              controller: _registroController,
+                              label: _conselhoSelecionado ==
+                                      ConselhoProfissional.crp
+                                  ? 'Numero do CRP'
+                                  : 'Numero do CRM',
+                              validator: _validarRegistro,
+                            ),
+                            const SizedBox(height: 12),
+                            _CampoArredondado(
+                              controller: _especialidadeController,
+                              label: 'Especialidade',
+                              validator: _validarEspecialidade,
+                            ),
+                            const SizedBox(height: 12),
+                          ],
+                          _CampoArredondado(
+                            controller: _senhaController,
+                            label: 'Senha',
+                            obscureText: true,
+                            validator: _validarSenha,
+                          ),
+                                if (!_modoCadastro) ...[
+                                  const SizedBox(height: 10),
+                                  Center(
+                                    child: TextButton(
+                                      onPressed:
+                                          _carregando ? null : _redefinirSenha,
+                                      style: TextButton.styleFrom(
+                                        foregroundColor: const Color(0xFF8A7FF0),
+                                        padding: EdgeInsets.zero,
+                                      ),
+                                      child: const Text('Esqueceu a Senha?'),
+                                    ),
+                                  ),
+                                ],
+                                const SizedBox(height: 24),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: ElevatedButton(
+                              onPressed: _carregando ? null : _submeter,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFD8CCFA),
+                                foregroundColor: const Color(0xFF4F4772),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                elevation: 0,
+                              ),
+                                    child: _carregando
+                                        ? const SizedBox(
+                                            width: 22,
+                                            height: 22,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2.5,
+                                            ),
+                                          )
+                                        : Text(
+                                            _modoCadastro
+                                                ? 'Vamos comecar!'
+                                                : 'Entrar',
+                                          ),
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'Pacientes podem ter varios profissionais vinculados, e cada profissional pode acompanhar varios pacientes.',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: const Color(0xFF7C7679),
+                                    height: 1.45,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -408,7 +486,7 @@ class _CampoArredondado extends StatelessWidget {
       decoration: InputDecoration(
         labelText: label,
         filled: true,
-        fillColor: Colors.white,
+        fillColor: const Color(0xFFFFFDFF),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
         border: OutlineInputBorder(
@@ -417,11 +495,11 @@ class _CampoArredondado extends StatelessWidget {
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),
-          borderSide: BorderSide.none,
+          borderSide: const BorderSide(color: Color(0xFFEADFF8)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),
-          borderSide: const BorderSide(color: Color(0xFF8A7FF0)),
+          borderSide: const BorderSide(color: Color(0xFF8A7FF0), width: 1.4),
         ),
       ),
     );
@@ -448,7 +526,7 @@ class _DateField extends StatelessWidget {
         decoration: InputDecoration(
           labelText: label,
           filled: true,
-          fillColor: Colors.white,
+          fillColor: const Color(0xFFFFFDFF),
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
           border: OutlineInputBorder(
@@ -457,7 +535,7 @@ class _DateField extends StatelessWidget {
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(18),
-            borderSide: BorderSide.none,
+            borderSide: const BorderSide(color: Color(0xFFEADFF8)),
           ),
         ),
         child: Text(
@@ -492,16 +570,16 @@ class _ModoToggle extends StatelessWidget {
         children: [
           Expanded(
             child: _ToggleButton(
-              label: 'Cadastro',
-              selected: isCadastro,
-              onTap: () => onChanged(true),
+              label: 'Login',
+              selected: !isCadastro,
+              onTap: () => onChanged(false),
             ),
           ),
           Expanded(
             child: _ToggleButton(
-              label: 'Login',
-              selected: !isCadastro,
-              onTap: () => onChanged(false),
+              label: 'Criar conta',
+              selected: isCadastro,
+              onTap: () => onChanged(true),
             ),
           ),
         ],
@@ -620,6 +698,37 @@ class _ConselhoChip extends StatelessWidget {
                 : const Color(0xFF756E79),
             fontWeight: FontWeight.w700,
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AuthBubble extends StatelessWidget {
+  const _AuthBubble({
+    required this.size,
+    required this.color,
+  });
+
+  final double size;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: color,
+          boxShadow: [
+            BoxShadow(
+              color: color,
+              blurRadius: 40,
+              spreadRadius: 8,
+            ),
+          ],
         ),
       ),
     );

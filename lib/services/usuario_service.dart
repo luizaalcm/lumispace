@@ -31,8 +31,9 @@ class UsuarioService {
     String? registroProfissional,
     String? especialidade,
   }) async {
+    final emailNormalizado = email.trim().toLowerCase();
     final credential = await _auth.createUserWithEmailAndPassword(
-      email: email,
+      email: emailNormalizado,
       password: senha,
     );
 
@@ -40,7 +41,7 @@ class UsuarioService {
     final usuario = UsuarioModel(
       uid: uid,
       nome: nome,
-      email: email,
+      email: emailNormalizado,
       tipo: tipo,
       dataNascimento: dataNascimento,
       codigo: _gerarCodigo(),
@@ -60,8 +61,9 @@ class UsuarioService {
     required TipoUsuario tipoEsperado,
   }) async {
     try {
+      final emailNormalizado = email.trim().toLowerCase();
       final credential = await _auth.signInWithEmailAndPassword(
-        email: email,
+        email: emailNormalizado,
         password: senha,
       );
 
@@ -69,7 +71,8 @@ class UsuarioService {
       final usuario = await buscarUsuario(uid);
 
       if (usuario == null) {
-        throw Exception('Perfil nao encontrado para este login.');
+        await _auth.signOut();
+        throw Exception('Conta inexistente. Essa conta nao esta mais disponivel.');
       }
 
       if (usuario.tipo != tipoEsperado) {
@@ -79,11 +82,16 @@ class UsuarioService {
 
       return usuario;
     } on FirebaseAuthException catch (e) {
-      if (e.code == 'wrong-password' || e.code == 'invalid-credential') {
+      if (e.code == 'user-not-found') {
+        throw Exception(
+          'Conta inexistente. Verifique o email ou crie uma nova conta.',
+        );
+      }
+      if (e.code == 'wrong-password') {
         throw Exception('Senha incorreta.');
       }
-      if (e.code == 'user-not-found') {
-        throw Exception('Email nao encontrado.');
+      if (e.code == 'invalid-credential') {
+        throw Exception('Email ou senha incorretos.');
       }
       throw Exception('Nao foi possivel fazer login.');
     }
@@ -110,10 +118,7 @@ class UsuarioService {
   }
 
   Future<List<UsuarioModel>> buscarUsuariosPorIds(List<String> ids) async {
-    final usuarios = await Future.wait(
-      ids.map((id) => buscarUsuario(id)),
-    );
-
+    final usuarios = await Future.wait(ids.map(buscarUsuario));
     return usuarios.whereType<UsuarioModel>().toList();
   }
 
@@ -190,7 +195,9 @@ class UsuarioService {
 
     final novoNome = nome?.trim().isNotEmpty == true ? nome!.trim() : usuario.nome;
     final novoEmail =
-        email?.trim().isNotEmpty == true ? email!.trim() : usuario.email;
+        email?.trim().isNotEmpty == true
+            ? email!.trim().toLowerCase()
+            : usuario.email.toLowerCase();
     final novaFoto = fotoPerfil ?? usuario.fotoPerfil;
 
     if (novoEmail != usuario.email) {
@@ -201,7 +208,9 @@ class UsuarioService {
           throw Exception('Esse email ja esta em uso.');
         }
         if (e.code == 'requires-recent-login') {
-          throw Exception('Por seguranca, faça login novamente antes de trocar o email.');
+          throw Exception(
+            'Por seguranca, faca login novamente antes de trocar o email.',
+          );
         }
         throw Exception('Nao foi possivel atualizar o email.');
       }
@@ -235,7 +244,9 @@ class UsuarioService {
         throw Exception('A nova senha precisa ter pelo menos 6 caracteres.');
       }
       if (e.code == 'requires-recent-login') {
-        throw Exception('Por seguranca, faça login novamente antes de trocar a senha.');
+        throw Exception(
+          'Por seguranca, faca login novamente antes de trocar a senha.',
+        );
       }
       throw Exception('Nao foi possivel atualizar a senha.');
     }
@@ -248,29 +259,58 @@ class UsuarioService {
     }
 
     try {
-      if (usuario.profissionaisVinculados.isNotEmpty) {
-        for (final profissionalId in usuario.profissionaisVinculados) {
-          await _db.collection('users').doc(profissionalId).update({
-            'pacientesVinculados': FieldValue.arrayRemove([usuario.uid]),
-          });
-        }
-      }
+      final usuarioAtual = await buscarUsuario(usuario.uid) ?? usuario;
 
-      if (usuario.pacientesVinculados.isNotEmpty) {
-        for (final pacienteId in usuario.pacientesVinculados) {
-          await _db.collection('users').doc(pacienteId).update({
-            'profissionaisVinculados': FieldValue.arrayRemove([usuario.uid]),
-          });
-        }
-      }
-
+      await _removerVinculosDoUsuario(usuarioAtual);
+      await _apagarSubcolecao(usuario.uid, 'registros');
+      await _apagarSubcolecao(usuario.uid, 'medicacoes');
       await _db.collection('users').doc(usuario.uid).delete();
       await user.delete();
     } on FirebaseAuthException catch (e) {
       if (e.code == 'requires-recent-login') {
-        throw Exception('Por seguranca, faça login novamente antes de excluir a conta.');
+        throw Exception(
+          'Por seguranca, faca login novamente antes de excluir a conta.',
+        );
       }
       throw Exception('Nao foi possivel excluir a conta.');
+    }
+  }
+
+  Future<void> _removerVinculosDoUsuario(UsuarioModel usuario) async {
+    if (usuario.profissionaisVinculados.isNotEmpty) {
+      for (final profissionalId in usuario.profissionaisVinculados) {
+        try {
+          await _db.collection('users').doc(profissionalId).update({
+            'pacientesVinculados': FieldValue.arrayRemove([usuario.uid]),
+          });
+        } catch (_) {
+          // Mantemos a exclusao da conta mesmo se um vinculo externo falhar.
+        }
+      }
+    }
+
+    if (usuario.pacientesVinculados.isNotEmpty) {
+      for (final pacienteId in usuario.pacientesVinculados) {
+        try {
+          await _db.collection('users').doc(pacienteId).update({
+            'profissionaisVinculados': FieldValue.arrayRemove([usuario.uid]),
+          });
+        } catch (_) {
+          // Mantemos a exclusao da conta mesmo se um vinculo externo falhar.
+        }
+      }
+    }
+  }
+
+  Future<void> _apagarSubcolecao(String userId, String nomeSubcolecao) async {
+    final snapshot = await _db
+        .collection('users')
+        .doc(userId)
+        .collection(nomeSubcolecao)
+        .get();
+
+    for (final doc in snapshot.docs) {
+      await doc.reference.delete();
     }
   }
 }
